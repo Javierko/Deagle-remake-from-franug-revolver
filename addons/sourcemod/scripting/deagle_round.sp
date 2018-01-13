@@ -92,8 +92,6 @@ public Event_PlayerSpawn(Handle:event, const String:name[], bool:dontBroadcast)
 {	
   new client = GetClientOfUserId(GetEventInt(event, "userid"));
   if(deagle) DoRound(client);
-  
-  GivePlayerItem(client, "weapon_deagle");  //When player spawn, he will get deagle - if you dont want it, just remove
 }
 
 public Action:CS_OnCSWeaponDrop(client, weaponindex)
