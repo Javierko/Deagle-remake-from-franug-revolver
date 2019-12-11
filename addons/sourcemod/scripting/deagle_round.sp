@@ -16,14 +16,17 @@
  */
 
 #pragma semicolon 1
+
 #include <sourcemod>
 #include <sdktools>
 #include <cstrike>
 #include <sdkhooks>
 
-new bool:deagle;
+#pragma newdecls required
 
-public Plugin:myinfo =
+bool deagle;
+
+public Plugin myinfo =
 {
 	name = "SM Deagle Round",
 	author = "Franc1sco Steam: franug, e. Javierko",
@@ -32,54 +35,68 @@ public Plugin:myinfo =
 	url = "http://steamcommunity.com/id/franug"
 };
 
-new Handle:timers[MAXPLAYERS+1];
+Handle timers[MAXPLAYERS+1];
 
-public OnPluginStart()
+public void OnPluginStart()
 {
 	HookEvent("round_prestart", Restart);
 	HookEvent("player_spawn", Event_PlayerSpawn);
 	RegAdminCmd("sm_deagle", Rondas, ADMFLAG_GENERIC);  // If you want you can change admin flag for command /deagle, if you wait it for everybody, just remove "ADMFLAG_GENERIC" - RegAdminCmd("sm_deagle", Rondas);
 	
-	for(new i = 1; i <= MaxClients; i++)
+	for(int i = 1; i <= MaxClients; i++)
+	{
 		if(IsClientInGame(i))
 		{
 			OnClientPutInServer(i);
 		}
+	}
 }
 
-public Action:Restart(Handle:event, const String:name[], bool:dontBroadcast)
+public Action Restart(Handle event, const char[] name, bool dontBroadcast)
 {
-	for(new i = 1; i <= MaxClients; i++)
-		if(IsClientInGame(i)) OnClientDisconnect(i);
+	for(int i = 1; i <= MaxClients; i++)
+	{
+		if(IsClientInGame(i))
+		{
+			OnClientDisconnect(i);
+		}
+	}
 	
 	deagle = false;
 	SetBuyZones("Enable");
 }
 
-public OnClientPutInServer(client)
+public void OnClientPutInServer(int client)
 {
    SDKHook(client, SDKHook_WeaponCanUse, OnWeaponCanUse);
 }
 
-public Action:OnWeaponCanUse(client, weapon)
+public Action OnWeaponCanUse(int client, int weapon)
 {
 	if(deagle)
 	{
-		new index = GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex");
-		decl String:classname[64];
+		int index = GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex");
+		char classname[64];
 		
-		if(index == 64 || (GetEdictClassname(weapon, classname, 64) && (StrContains(classname, "weapon_knife") != -1 || StrContains(classname, "weapon_bayonet") != -1))) return Plugin_Continue;
-		else return Plugin_Handled;
+		if(index == 64 || (GetEdictClassname(weapon, classname, 64) && (StrContains(classname, "weapon_knife") != -1 || StrContains(classname, "weapon_bayonet") != -1)))
+		{
+			return Plugin_Continue;
+		}
+		
+		else
+		{
+			return Plugin_Handled;
+		}
 		
 	}
 	return Plugin_Continue;
 }
 
-public Action:Rondas(client, args)
+public Action Rondas(int client, int args)
 {
 	SetBuyZones("Disable");
 	deagle = true;
-	for(new i = 1; i <= MaxClients; i++)
+	for(int i = 1; i <= MaxClients; i++)
 		if(IsClientInGame(i) && GetClientTeam(i) > 1)
 		{
 			CS_RespawnPlayer(i);
@@ -88,38 +105,50 @@ public Action:Rondas(client, args)
 	return Plugin_Handled;
 }
 
-public Event_PlayerSpawn(Handle:event, const String:name[], bool:dontBroadcast)
+public void Event_PlayerSpawn(Handle event, const char[] name, bool dontBroadcast)
 {	
-  new client = GetClientOfUserId(GetEventInt(event, "userid"));
-  if(deagle) DoRound(client);
+	int client = GetClientOfUserId(GetEventInt(event, "userid"));
+	if(deagle)
+	{
+ 		DoRound(client);
+	}
 }
 
-public Action:CS_OnCSWeaponDrop(client, weaponindex)
+public Action CS_OnCSWeaponDrop(int client, int weaponindex)
 {
-	if(deagle) return Plugin_Handled;
+	if(deagle)
+	{
+		return Plugin_Handled;
+	}
 	
 	return Plugin_Continue;
 }
 
-SetBuyZones(const String:status[])
+void SetBuyZones(const char[] name)
 {
-	new maxEntities = GetMaxEntities();
-	decl String:class[24];
+	int maxEntities = GetMaxEntities();
+	char class[24];
 	
-	for (new i = MaxClients + 1; i < maxEntities; i++)
+	for (int i = MaxClients + 1; i < maxEntities; i++)
 	{
 		if (IsValidEdict(i))
 		{
 			GetEdictClassname(i, class, sizeof(class));
+			
 			if (StrEqual(class, "func_buyzone"))
-				AcceptEntityInput(i, status);
+				{
+					AcceptEntityInput(i, name);
+				}
 		}
 	}
 }
 
-DoRound(client)
+void DoRound(int client)
 {
-	if(timers[client] != INVALID_HANDLE) KillTimer(timers[client]);
+	if(timers[client] != INVALID_HANDLE)
+	{
+		KillTimer(timers[client]);
+	}
 	
 	timers[client] = CreateTimer(3.0, Darm, client, TIMER_REPEAT);
 	
@@ -129,25 +158,25 @@ DoRound(client)
 	GivePlayerItem(client, "weapon_deagle");    // After somebody write /deagle, he will be respawned with deagle and knife
 }
 
-stock StripAllWeapons(iClient)
+stock void StripAllWeapons(int iClient)
 {
-    new iEnt;
-    for (new i = 0; i <= 4; i++)
+    int iEnt;
+    for (int i = 0; i <= 4; i++)
     {
 		while ((iEnt = GetPlayerWeaponSlot(iClient, i)) != -1)
 		{
-            RemovePlayerItem(iClient, iEnt);
-            AcceptEntityInput(iEnt, "Kill");
+			RemovePlayerItem(iClient, iEnt);
+			AcceptEntityInput(iEnt, "Kill");
 		}
     }
 }  
 
-public OnClientPostAdminCheck(client)
+public void OnClientPostAdminCheck(int client)
 {
 	timers[client] = CreateTimer(3.0, Darm, client, TIMER_REPEAT);
 }
 
-public OnClientDisconnect(client)
+public void OnClientDisconnect(int client)
 {
 	if(timers[client] != INVALID_HANDLE)
 	{
@@ -156,11 +185,11 @@ public OnClientDisconnect(client)
 	}
 }
 
-public Action:Darm(Handle:timer, any:client)
+public Action Darm(Handle timer, any client)
 {
 	if(IsPlayerAlive(client))
 	{
-		new weapon = GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon");
+		int weapon = GetEntPropEnt(client, Prop_Data, "m_hActiveWeapon");
 		if(weapon > 0 && GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex") == 64)
 		{
 			SetEntProp(weapon, Prop_Send, "m_iPrimaryReserveAmmoCount", 8);
